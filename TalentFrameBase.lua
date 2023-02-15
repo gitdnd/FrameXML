@@ -1,4 +1,6 @@
-
+--[[
+	
+]]
 
 MAX_TALENT_GROUPS = 2;
 MAX_TALENT_TABS = 3;

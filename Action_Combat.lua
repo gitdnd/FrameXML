@@ -266,6 +266,7 @@ function SpacePress()
 	end
 end
 
+
 local gossiping = CreateFrame("Frame")
 gossiping:RegisterEvent("GOSSIP_SHOW")
 gossiping:RegisterEvent("GOSSIP_CLOSED")
@@ -289,6 +290,7 @@ gossiping.loot = false
 gossiping.quest = false
 gossiping.reward = -1
 gossiping:SetScript("OnEvent", function(self, event)
+	UpdateGossipFrame()
 	if(event == "GOSSIP_SHOW") then
 		if(self.gossip == false) then
 			self.gossip = true
@@ -420,24 +422,29 @@ function TabRelease()
 		ModifyCharacterState(3, -1)
 	end
 end 
-function NUMPress(number)  
-	local num = tonumber(string.sub(number, 13, 13))
+function NUMPressDirect(num)
 	local avQu = GetNumGossipAvailableQuests()
 	local acQu = GetNumGossipActiveQuests()
+	
 	skipBind = true
 	if(gossiping.openWindow > 0) then   
 		if(gossiping.questStage == 3 and GetNumQuestChoices() > 0 and GetNumQuestChoices() >= num and num > 0) then 
 			GetQuestReward(num) 
 		elseif(num <= avQu) then
 			SelectGossipAvailableQuest(num)
-		elseif(num <= acQu) then
-			SelectGossipActiveQuest(num)
+		elseif(num <= acQu + avQu) then
+			SelectGossipActiveQuest(num - avQu)
 		elseif(gossiping.openWindow > 0 and gossiping.questStage == 0) then
 			SelectGossipOption((num - avQu) - acQu) 
+			
 		end
 	else
 		skipBind = false
 	end
+end
+function NUMPress(number)
+	local num = tonumber(string.sub(number, 13, 13))
+	NUMPressDirect(num)
 end
 function UpdateButton()
 	local butIn = (gossiping.merchantSelection % MERCHANT_ITEMS_PER_PAGE) 
@@ -769,6 +776,7 @@ tick:HookScript("OnUpdate", function(self, elapsed)
 			SendChatMessage(".cast 100003")
 			attackHeld = attackHeld + elapsed
 		end  
+
 	elseif(attackHeld > 0) then
 		attackHeld = 0
 	end
@@ -821,6 +829,7 @@ tick:HookScript("OnUpdate", function(self, elapsed)
 			ModifyCharacterState(4, -1)
 		end
 	end  
+	
 	if(jumped == 1) then -- replace with something that runs on ascend to be more optimized.
 		if(IsFalling() == nil) then
 			if(lastBackForward == 1) then
@@ -843,14 +852,4 @@ insp:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 insp:SetScript("OnEvent", function(self, event) 
 end)
-
-
-
-
-
-
-
-
-
-
 

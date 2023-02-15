@@ -8,9 +8,6 @@ FontStyles.xml
 Localization.xml
 ## add new modules below here
 
-#Custom
-Action_Combat.lua
- 
 
 ## CMH START
 smallfolk.lua
@@ -151,3 +148,9 @@ MovieFrame.xml
 VehicleMenuBar.xml
 AlternatePowerBar.xml
 AnimationSystem.lua
+
+#Custom
+Action_Combat.lua
+NeoTalentFrame.lua
+NeoGossipFrame.lua
+ 

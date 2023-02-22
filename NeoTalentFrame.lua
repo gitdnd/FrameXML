@@ -6,7 +6,9 @@ local TOP_BAR_SIZE_Y = 16
 
 local NTF_FRAME_LEVEL = 5
 
-TalentFrame_LoadUI()
+UIParentLoadAddOn("Blizzard_TalentUI");
+
+
 
 local NeoTalentFrameUI = CreateFrame("Frame", NeoTalentFrameUI, UIParent)
 
@@ -46,21 +48,15 @@ NeoTalentFrameUI.BackgroundR:SetBackdrop({
 NeoTalentFrameUI.BackgroundR:SetFrameLevel(NTF_FRAME_LEVEL + 1)
 
 
-
-
-
-local talentFrame = getglobal("PlayerTalentFrame")
-if talentFrame ~= nil then
-    talentFrame:SetAlpha(0)
-    talentFrame:UnregisterAllEvents()
-    talentFrame:HookScript("OnShow", function(self)
-        NeoTalentFrameUI:Show()
-    end)
-    talentFrame:HookScript("OnHide", function(self)
+function ToggleNeoTalentFrame()
+    if NeoTalentFrameUI:IsShown() then
         NeoTalentFrameUI:Hide()
-    end)
-    talentFrame.Show = nil
+    else
+        NeoTalentFrameUI:Show()
+    end
 end
+
+
 
 NeoTalentFrameUI.Specs = {}
 
@@ -208,7 +204,10 @@ function CreateTalentButton(x, y)
     talentButton:SetScript("OnClick", function (self, button, down)
     end)
     talentButton:SetFrameLevel(NTF_FRAME_LEVEL + 3)
-    talentButton:SetScript()
+    talentButton:SetScript("OnClick", function(self, event) 
+        talentButton.Fade:Hide()
+    end)
+
 
     talentButton.Background = CreateFrame("Frame", nil, talentButton)
     talentButton.Background:Show()
@@ -231,7 +230,7 @@ function CreateTalentButton(x, y)
     talentButton.Fade:SetSize(400, 52)
 
     talentButton.Fade:SetBackdrop({
-        bgFile = "Interface/Flat"
+        bgFile = "Interface/Flat"       
     })
     talentButton.Fade:SetFrameLevel(NTF_FRAME_LEVEL + 4)
     
@@ -245,10 +244,27 @@ function CreateTalentButton(x, y)
     talentButton.NameBox:SetFont("Fonts\\FRIZQT__.TTF", 45, "OUTLINE")
     talentButton.NameBox:SetTextColor(1, 0.84, 0, 1)
 
+    function OnEnterFrame(self, motion)
+        GameTooltip:Show()
+        GameTooltip:SetPoint("TOPRIGHT", talentButton, "BOTTOMLEFT", 0, 0)
+        GameTooltip:SetOwner(talentButton, "ANCHOR_RIGHT");
+        
+            
+        GameTooltip:SetFrameLevel(15)
+        
+        GameTooltip:SetHyperlink("spell:210030")
+        
+    end 
+    function OnLeaveFrame(self, motion)
+        GameTooltip:Hide()
+    end 
+    talentButton:SetScript("OnLeave", OnLeaveFrame)
+    talentButton:SetScript("OnEnter", OnEnterFrame)
     return talentButton
 
 
 end
+
 
 function SetButtonData(button, data)
     button:SetNormalTexture(data.Icon)
@@ -258,6 +274,7 @@ function SetButtonData(button, data)
     else
         button.Fade:Show()
     end
+
 end
 for i = 1, 8 do
     SetButtonData(CreateTalentButton(0, i), CreateTalentData(5, "Stormbolt", "Interface/Icons/Ability_ThunderBolt", "Fires a powerful storm of Bolts"))

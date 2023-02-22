@@ -8,7 +8,7 @@ local NGF_FRAME_LEVEL = 6
 local PortraitsList = {
     LadySylvanasWindrunner = "Sylvanas",
     Sharlindra = "UndeadF001",
-    Varimathras = "Varimathras"
+    Varimathras = "Varimathras",
 }
 
 
@@ -215,8 +215,9 @@ function UpdateGossipFrame()
             padding = padding + width
             GossipOption:SetPoint("TOPLEFT", NeoGossipFrameUI, "BOTTOMLEFT", 0, TOP_BAR_SIZE_Y * ( padding + optionsCurrent + 1))
 
+            local opCurr = optionsCurrent
             GossipOption:SetScript("OnClick", function (self, button, down)
-                NUMPressDirect(optionsCurrent)
+                NUMPressDirect(opCurr)
             end)
         end
         local optionsAcQuests = BreakQuestsDownAc(GetGossipActiveQuests())
@@ -234,8 +235,9 @@ function UpdateGossipFrame()
             padding = padding + width
             GossipOption:SetPoint("TOPLEFT", NeoGossipFrameUI, "BOTTOMLEFT", 0, TOP_BAR_SIZE_Y * ( padding + optionsCurrent + 1))
 
+            local opCurr = optionsCurrent
             GossipOption:SetScript("OnClick", function (self, button, down)
-                NUMPressDirect(optionsCurrent)
+                NUMPressDirect(opCurr)
             end)
         end
         local options = {GetGossipOptions()}

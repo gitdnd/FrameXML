@@ -153,4 +153,4 @@ AnimationSystem.lua
 Action_Combat.lua
 NeoTalentFrame.lua
 NeoGossipFrame.lua
- 
+Warforging.lua

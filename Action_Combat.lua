@@ -1,3 +1,13 @@
+
+local config = {
+	Prefix = "Action_Combat",
+	Functions = {
+        [1] = "OnItemUpdate",
+	}
+}
+
+RegisterServerResponses(config)
+
 local keys = {
 	"MOVEFORWARD", 
 	"MOVEBACKWARD", 
@@ -123,6 +133,9 @@ function RPGFocusOn()
 	focused = true
 end
 function FocusOff()		
+	
+	
+	MoveAndSteerStop()
 	TurnOrActionStartWrap() 
 	SetOverrideBinding(UIParent, true, "BUTTON1", "NONE")
 	SetOverrideBinding(UIParent, true, "BUTTON2", "NONE")
@@ -370,6 +383,7 @@ gossiping:SetScript("OnEvent", function(self, event)
 	end
 end);
 function EPress()
+	
 	if(gossiping.questStage == 1) then
 		AcceptQuest()
 	elseif(gossiping.questStage == 2) then
@@ -385,9 +399,12 @@ function EPress()
 		TargetNearest()
 		if(CheckInteractDistance("target", 3) == 1) then
 			InteractUnit("target")
-	
+			if UnitIsDead("target") == true then
+				CastSpellByID("8613", "target")
+			end
 		else
 			ClearTarget()
+			SendClientRequest(config.Prefix, 2)
 		end
 	end
 end
@@ -478,6 +495,11 @@ function MoveForwardPress()
 		end
 		skipBind = true
 	end
+end
+function MoveForwardRelease()
+	ShiftRelease()
+	MoveForwardStart()
+	MoveForwardStop() -- bug fix for opening chests for some fucking reason
 end
 function MoveBackwardPress()
 	if(gossiping.trainer == true) then
@@ -570,7 +592,7 @@ local keyRelease = {
 	After = {
 		TARGETNEARESTENEMY = TabRelease,
 		SPRINT = ShiftRelease,
-		MOVEFORWARD = ShiftRelease
+		MOVEFORWARD = MoveForwardRelease
 	}
 }
 function BeforeKeyPress(key, up)
@@ -721,6 +743,12 @@ end );
 hooksecurefunc( "InteractUnit", function()
 	
 end );  
+hooksecurefunc( "TurnOrActionStart", function()
+	MoveForwardStop()
+	if(keysHeld["MOVEFORWARD"]) then
+		MoveForwardStart()
+	end
+end );  
 
 local camDist = {
 	BloodElf3 = 0.25, -- female
@@ -749,28 +777,13 @@ local defenseHeld = 0
 local tick = CreateFrame("Frame")  
 
 tick:HookScript("OnUpdate", function(self, elapsed)
-	function Initialize()
-		local sexRace = UnitRace("player"):gsub("%s+", "")..UnitSex("player")
-		 
-		MouselookStart() 
-		SetCVar("cameraDistanceMaxFactor", camDist[sexRace]) 
-		SetCVar("cameraPitchMoveSpeed", 0.001) 
-		for i = 1, #keys do
-			keysHeld[keys[i]] = false
-			keyEnables[keys[i]] = 0
-			keyEnablesUp[keys[i]] = 0
-		end
-		RunBinding("CAMERAZOOMOUT")
-	end
-	if(timeElapsed == 0) then
-		Initialize()
-		timeElapsed = timeElapsed + 1
-	else
-		if(keysHeld["SPRINT"] == true and IsShiftKeyDown() == nil) then	 
-			BeforeKeyPress("SPRINT", false)
-			OnKeyPress("SPRINT", false)
-		end 
-	end
+	
+	timeElapsed = timeElapsed + 1
+	if(keysHeld["SPRINT"] == true and IsShiftKeyDown() == nil) then	 
+		BeforeKeyPress("SPRINT", false)
+		OnKeyPress("SPRINT", false)
+	end 
+	
 	if(IsMouseButtonDown("LeftButton")and characterState ~= 3 and gossiping.openWindow == 0 and focused == false) then
 		if(attackHeld == 0) then 
 			SendChatMessage(".cast 100003")
@@ -785,6 +798,7 @@ tick:HookScript("OnUpdate", function(self, elapsed)
 			SendChatMessage(".cast 100006")
 			defenseHeld = defenseHeld + elapsed
 		end 
+		defenseHeld = defenseHeld + elapsed
 	elseif(defenseHeld > 0) then
 		defenseHeld = 0
 	end
@@ -847,9 +861,160 @@ tick:HookScript("OnUpdate", function(self, elapsed)
 	end
 end)  
 
-local insp = CreateFrame("Frame")
-insp:RegisterEvent("UNIT_INVENTORY_CHANGED")
+GameTooltip:SetBackdrop({
+	bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+	edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+	edgeSize = 8,
+	insets = { left = 2, right = 2, top = 2, bottom = 2 },
+})
 
-insp:SetScript("OnEvent", function(self, event) 
+local function ActionCombatLoad(self, event)
+	local sexRace = UnitRace("player"):gsub("%s+", "")..UnitSex("player")
+		
+	MouselookStart() 
+	SetCVar("cameraDistanceMaxFactor", camDist[sexRace]) 
+	SetCVar("cameraPitchMoveSpeed", 0.001) 
+	for i = 1, #keys do
+		keysHeld[keys[i]] = false
+		keyEnables[keys[i]] = 0
+		keyEnablesUp[keys[i]] = 0
+	end
+	RunBinding("CAMERAZOOMOUT")
+	ModifyCharacterState(3, 1)
+	ModifyCharacterState(3, -1)
+	
+	GameTooltip:SetHyperlink("|cff66bbff|Hglyph:23:460|h[Glyph of Fortitude]|h|r")
+	GameTooltip:Show()
+
+	for i = 1, 6 do
+		SetBinding("SHIFT-"..i, "")
+		
+	end
+end
+
+local Init = CreateFrame("Frame")
+Init:RegisterEvent("PLAYER_ENTERING_WORLD")
+Init:SetScript("OnEvent", ActionCombatLoad)
+
+local StoredTooltips = {
+
+}
+
+GameTooltip.tooltipId = 0
+GameTooltip.ilevel = 0
+
+function SetBonusData(self)
+	local lvl = StoredTooltips[self.tooltipId]
+	if(lvl ~= nil and self.ExtraRegion ~= nil) then
+		if lvl > 0 then
+			self.ExtraRegion:SetText("|cffEEBC1DWarforge LVL: +"..lvl.."|r")
+		else
+			self.ExtraRegion:SetText("Unnotable")
+		end
+	else
+		if lvl == nil then
+			SendClientRequest(config.Prefix, 1, tonumber(self.tooltipId))
+		end
+	end
+end
+
+local sub = string.sub
+local len = string.len
+local match = string.match
+local tonumber = tonumber
+
+
+
+
+
+GameTooltip:HookScript("OnUpdate", function(self)
+	
+	
+	if(self:GetItem() == nil) then
+		return
+	end
+	
+	local region = select(15, self:GetRegions())
+	
+
+	self.ilevel = 0
+	for i = 1, select("#", self:GetRegions()) do 
+		local region = select(i, self:GetRegions())
+		if region and region:GetObjectType() == "FontString" and region:GetText() then 
+			local text = (region:GetText())
+			if sub(text, 11, 15) == "<Gift" then
+				text = sub( text, 1, len(text) - 3 )
+				text = sub( text, 22, len(text) )
+				self.tooltipId = tonumber(text)
+				region:SetText("")
+				region:Hide()
+				local x, y = self:GetSize()
+				self:SetSize(x, y - 12)
+			elseif sub(text, 1, 10) == "Item Level" then
+				self.ilevel = tonumber(match (text, "%d+"))
+				self.ExtraRegion = region
+				region:SetText("...")
+			elseif sub(text, 1, 12) == "<Shift Right" then 
+				region:Hide()
+				region:SetText("")
+				local x, y = self:GetSize()
+				self:SetSize(x, y - 12)
+			end
+		end
+	end
+				--[[
+	for i=1, select("#",self:GetRegions()) do 
+		local region= select(i, GameTooltip:GetRegions())
+		if region and region:GetObjectType() == "FontString" and region:GetText() then 
+			local text = (region:GetText())  
+			if(text ~= nil) then
+				local words = { strsplit(" ", text, 30) }
+				if(#words >= 2 and words[1] ~= "Item" and words[2] ~= "Level") then  
+					local r1 = (string.find (text, "%d+"))
+					if(r1 ~= nil) then	
+						local r2 = string.find (text, " ", r1)
+						if(r2 == nil) then
+							r2 = string.len(text)
+						end
+						local num = tonumber(string.sub(text, r1, r2))
+						if(num) then 
+							num = (num * (100 + ilevel))/100 
+							text = text:gsub(string.sub(text, r1, r2), num.." ") 
+						end 
+					end
+					region:SetText(text)
+				elseif words[1] == "Item" and words[2] == "Level" then
+				end  
+
+			end
+		end 
+	end
+				]]
+	SetBonusData(self)
 end)
 
+
+function OnItemUpdate(sender, argTable)
+	if argTable[1] ~= nil and argTable[2] ~= nil then
+		StoredTooltips[argTable[2]] = argTable[1]
+		SetBonusData(GameTooltip)
+	end
+end
+
+
+local SpellHelper = CreateFrame("Frame")
+SpellHelper.Targeting = 0
+SpellHelper:RegisterEvent("CURRENT_SPELL_CAST_CHANGED")
+SpellHelper:SetScript("OnEvent", function(self, event)
+	if SpellIsTargeting() == 1 then
+		if self.Targeting == 0 then
+			ModifyCharacterState(3, 1)
+			self.Targeting = 1
+		end
+	elseif self.Targeting == 1 then
+		self.Targeting = 0
+		ModifyCharacterState(3, -1)
+		attackHeld = 1
+		defenseHeld = 1
+	end
+end)

@@ -2,8 +2,8 @@ local debug = false
 
 local CMH = {}
 local datacache = {}
-local delim = {"♠", "♥", "♚", "♛", "♜"}
-local pck = {REQ = 1, DAT = 2}
+local delim = {"", "", "", "", ""}
+local pck = {REQ = "", DAT = ""}
 
 -- HELPERS START
 local function debugOut(prefix, x, msg)
@@ -49,7 +49,12 @@ local function ParseMessage(str)
 	-- Convert value to correct type
 	for k, v in pairs(valTemp) do
 		local varType = typeTemp[k]
-		if(varType == 3) then -- Ints
+		if(varType == 2) then -- Strings
+			-- Special case for empty string parsing
+			if(v == string.char(tonumber('1A', 16))) then
+				v = ""
+			end
+		elseif(varType == 3) then -- Ints
 			v = tonumber(v)
 		elseif(varType == 4) then -- Tables
 			v = Smallfolk.loads(v, #v)
@@ -72,6 +77,10 @@ local function ProcessVariables(reqId, ...)
 	
 	for _, v in pairs(arg) do
 		if(type(v) == "string") then
+			-- Special case for empty string parsing
+			if(#v == 0) then
+				v = string.char(tonumber('1A', 16))
+			end
 			msg = msg .. delim[2]
 		elseif(type(v) == "number") then
 			msg = msg .. delim[3]
@@ -106,16 +115,13 @@ function CMH.OnReceive(self, event, header, data, Type, sender)
 	-- Ensure the sender and receiver is the same, the message is an addon message, and the message type is WHISPER
 	if event == "CHAT_MSG_ADDON" and sender == UnitName("player") and Type == "WHISPER" then
 		-- unpack and validate addon message structure
-		local pfx, source, pckId = header:match("(...)(%u)(%d%d)")	
+		local pfx, source, pckId = header:match("(.)(%u)(.)")	
 		if not pfx or not source or not pckId then
 			return
 		end
 		
 		-- Make sure we're only processing addon messages using our framework prefix character as well as client messages
 		if(pfx == delim[1] and source == "S") then
-			-- convert ID to number so we can compare with our packet list
-			pckId = tonumber(pckId)
-			
 			if(pckId == pck.REQ) then
 				debugOut("REQ", "Rx", "REQ received, data: "..data)
 				CMH.OnREQ(sender, data)
@@ -239,7 +245,7 @@ end
 -- Tx START
 
 function CMH.SendREQ(functionId, linkCount, reqId, addon)
-	local header = string.format("%01s%01s%02d", delim[1], "C", pck.REQ)
+	local header = string.format("%01s%01s%01s", delim[1], "C", pck.REQ)
 	local data = string.format("%02d%03d%06s%0"..tostring(#addon).."s", functionId, linkCount, reqId, addon)
 	SendAddonMessage(header, data, "WHISPER", UnitName("player"))
 	debugOut("REQ", "Tx", "Sent REQ with ID "..reqId..", sending DAT..")
@@ -247,7 +253,7 @@ end
 
 function CMH.SendDAT(reqId)
 	-- Build data message header
-	local header = string.format("%01s%01s%02d", delim[1], "C", pck.DAT)
+	local header = string.format("%01s%01s%01s", delim[1], "C", pck.DAT)
 	
 	-- iterate all items in the message data cache and send
 	-- functions can also be trigger functions without any data, only send header and no payload
